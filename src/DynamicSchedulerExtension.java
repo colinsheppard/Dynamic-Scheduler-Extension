@@ -1,15 +1,5 @@
 import java.util.ArrayList;
-
-import org.nlogo.api.CompilerException;
-import org.nlogo.api.LogoException;
-import org.nlogo.api.ExtensionException;
-import org.nlogo.api.Argument;
-import org.nlogo.api.Syntax;
-import org.nlogo.api.Context;
-import org.nlogo.api.LogoList;
-import org.nlogo.api.LogoListBuilder;
-import org.nlogo.api.DefaultReporter;
-import org.nlogo.api.DefaultCommand;
+import org.nlogo.api.*;
 
 public class DynamicSchedulerExtension
 extends org.nlogo.api.DefaultClassManager {
@@ -228,15 +218,14 @@ extends org.nlogo.api.DefaultClassManager {
 		// matrix:set mat rowI colJ newValue
 		primManager.addPrimitive("add", new Add());
 		
+		// dynamic-scheduler:new
+		primManager.addPrimitive("new", new NewLogoSchedule());
+		
 		// matrix:copy mat => matrix object
 //		primManager.addPrimitive("copy", new Copy());
 
 		// matrix:pretty-print-text matrix => string containing formatted text
 //		primManager.addPrimitive("pretty-print-text", new PrettyPrintText());
-
-		//Note: The Jama library that we're using can do more than just the functionality
-		//      that we've exposed here.  (e.g. LU, Cholesky, SV decomposition, determinants)
-		//      Motivated persons could add more primitives to access these functions...
 
 	}
 
@@ -251,6 +240,20 @@ extends org.nlogo.api.DefaultClassManager {
 					+ org.nlogo.api.Dump.logoObject(obj));
 		}
 		return (LogoSchedule) obj;
+	}
+	
+	public static class NewLogoSchedule extends DefaultReporter {
+
+		public Syntax getSyntax() {
+			return Syntax.reporterSyntax(new int[]{},
+					Syntax.WildcardType());
+		}
+
+		public Object report(Argument args[], Context context)
+				throws ExtensionException, LogoException {
+			LogoSchedule sched = new LogoSchedule(new ArrayList<Double>());
+			return sched;
+		}
 	}
 
 	public static class Get extends DefaultReporter {
@@ -299,7 +302,7 @@ extends org.nlogo.api.DefaultClassManager {
 		public void perform(Argument args[], Context context)
 				throws ExtensionException, LogoException {
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
-			sched.schedule.add(args[3].getDoubleValue());
+			sched.schedule.add(args[1].getDoubleValue());
 		}
 	}
 

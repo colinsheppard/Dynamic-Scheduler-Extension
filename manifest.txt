@@ -1,4 +1,4 @@
 Manifest-Version: 1.0
-Extension-Name: matrix
-Class-Manager: org.nlogo.extensions.matrix.MatrixExtension
+Extension-Name: dynamic-scheduler
+Class-Manager: DynamicSchedulerExtension
 NetLogo-Extension-API-Version: 5.0
