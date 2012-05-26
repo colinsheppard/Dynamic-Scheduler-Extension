@@ -1,5 +1,10 @@
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.TreeSet;
+
 import org.nlogo.api.*;
+import org.nlogo.nvm.ExtensionContext;
+import org.nlogo.nvm.Workspace.OutputDestination;
 
 public class DynamicSchedulerExtension
 extends org.nlogo.api.DefaultClassManager {
@@ -12,19 +17,86 @@ extends org.nlogo.api.DefaultClassManager {
 	// the WeakHashMap here may seem a bit odd, but it is apparently the easiest way to handle things
 	// for explanation, see the comment in ArrayExtension.java in the Array extension.
 	private static final java.util.WeakHashMap<LogoSchedule, Long> schedules = new java.util.WeakHashMap<LogoSchedule, Long>();
-	private static long next = 0;
+	private static long nextSchedule = 0;
+	private static final java.util.WeakHashMap<LogoEvent, Long> events = new java.util.WeakHashMap<LogoEvent, Long>();
+	private static long nextEvent = 0;
 
+	public class LogoEvent
+	// new NetLogo data types defined by extensions must implement
+	// this interface
+	implements org.nlogo.api.ExtensionObject {
+		private final long id;
+		Double tick = null;
+		CommandTask task = null;
+		Agent agent = null;
+
+		LogoEvent(Agent agent, CommandTask task, Double tick) {
+			this.agent = agent;
+			this.task = task;
+			this.tick = tick;
+			events.put(this, nextEvent);
+			this.id = nextEvent;
+			nextEvent++;
+		}
+
+		public void replaceData(Agent agent, CommandTask task, Double tick) {
+			this.agent = agent;
+			this.task = task;
+			this.tick = tick;
+		}
+
+		/**
+		 * This is a very shallow "equals", see recursivelyEqual()
+		 * for deep equality.
+		 */
+		public boolean equals(Object obj) {
+			return this == obj;
+		}
+
+		//		public String dump(boolean readable, boolean exporting, boolean reference) {
+		//			StringBuilder buf = new StringBuilder();
+		//			if (exporting) {
+		//				buf.append(id);
+		//				if (!reference) {
+		//					buf.append(":");
+		//				}
+		//			}
+		//			if (!(reference && exporting)) {
+		//				buf.append(" [ ");
+		//				java.util.Iterator iter = schedule.iterator();
+		//				while(iter.hasNext()){
+		//						buf.append(org.nlogo.api.Dump.number((Double)iter.next()));
+		//						buf.append(" ");
+		//				}
+		//				buf.append("]");
+		//			}
+		//			return buf.toString();
+		//		}
+
+		public String getExtensionName() {
+			return "dynamic-scheduler";
+		}
+
+		public String getNLTypeName() {
+			return "event";
+		}
+
+		public boolean recursivelyEqual(Object arg0) {
+			// TODO Auto-generated method stub
+			return equals(arg0);
+		}
+
+		public String dump(boolean arg0, boolean arg1, boolean arg2) {
+			return tick + ((agent==null)?"":agent.toString()) + ((task==null)?"":task.toString());
+		}
+	}
 	private static class LogoSchedule
 	// new NetLogo data types defined by extensions must implement
 	// this interface
 	implements org.nlogo.api.ExtensionObject {
-		// NOTE: Because the Jama.Matrix does not support resizing/reshaping
-		//       the underlying array, it turned out to be simpler to
-		//       store the matrix in a member field, rather than have LogoMatrix
-		//       be a subclass of Jama.Matrix.
-
-		ArrayList<Double> schedule = null;
 		private final long id;
+		LogoEventComparator comparator = (new DynamicSchedulerExtension()).new LogoEventComparator();
+		TreeSet<LogoEvent> schedule = new TreeSet<LogoEvent>(comparator);
 
 		/**
 		 * should be used only when doing importWorld, and
@@ -35,21 +107,17 @@ extends org.nlogo.api.DefaultClassManager {
 			schedule = null;
 			this.id = id;
 			schedules.put(this, id);
-			next = StrictMath.max(next, id + 1);
+			nextSchedule = StrictMath.max(nextSchedule, id + 1);
 		}
 
-		LogoSchedule(ArrayList<Double> scheduleData) {
-			schedule = scheduleData;
-			schedules.put(this, next);
-			this.id = next;
-			next++;
+		LogoSchedule() {
+			schedules.put(this, nextSchedule);
+			this.id = nextSchedule;
+			nextSchedule++;
 		}
 
-		public void replaceData(double[] dArray) {
-			schedule = new ArrayList<Double>();
-			for(double dub : dArray){
-				schedule.add(dub);
-			}
+		public void replaceData() {
+			schedule = new TreeSet<LogoEvent>(comparator);
 		}
 
 		/**
@@ -70,9 +138,10 @@ extends org.nlogo.api.DefaultClassManager {
 			}
 			if (!(reference && exporting)) {
 				buf.append(" [ ");
-				for (int i = 0; i < schedule.size(); i++) {
-						buf.append(org.nlogo.api.Dump.number(schedule.get(i)));
-						buf.append(" ");
+				java.util.Iterator iter = schedule.iterator();
+				while(iter.hasNext()){
+					buf.append(((LogoEvent)iter.next()).dump(true, true, true));
+					buf.append(" ");
 				}
 				buf.append("]");
 			}
@@ -84,10 +153,7 @@ extends org.nlogo.api.DefaultClassManager {
 		}
 
 		public String getNLTypeName() {
-			// since this extension only defines one type, we don't
-			// need to give it a name; "dynamic-scheduler:" is enough,
-			// "dynamic-scheduler:schedule" would be redundant
-			return "";
+			return "schedule";
 		}
 
 		public boolean recursivelyEqual(Object arg0) {
@@ -96,9 +162,21 @@ extends org.nlogo.api.DefaultClassManager {
 		}
 	}
 
+	public class LogoEventComparator implements Comparator<LogoEvent> {
+		public int compare(LogoEvent a, LogoEvent b) {
+			if(a.tick < b.tick){
+				return -1;
+			}else if(a.tick > b.tick){
+				return 1;
+			}else{
+				return 0;
+			}
+		}
+	}
+
 	public void clearAll() {
 		schedules.clear();
-		next = 0;
+		nextSchedule = 0;
 	}
 
 	public StringBuilder exportWorld() {
@@ -129,7 +207,7 @@ extends org.nlogo.api.DefaultClassManager {
 		if (s.length > 1) {
 			LogoList nestedL = (LogoList) reader.readFromString(s[1]);
 			double[] newData = convertNestedLogoListToArray(nestedL);
-			sched.replaceData(newData);
+			sched.replaceData();
 		}
 		return sched;
 	}
@@ -214,18 +292,19 @@ extends org.nlogo.api.DefaultClassManager {
 		// matrix:get mat rowI colJ  =>  value at location I,J
 		primManager.addPrimitive("size-of", new GetSize());
 		// matrix:get mat rowI colJ  =>  value at location I,J
-		primManager.addPrimitive("get", new Get());
+		primManager.addPrimitive("first", new First());
+		primManager.addPrimitive("next", new Next());
 		// matrix:set mat rowI colJ newValue
 		primManager.addPrimitive("add", new Add());
-		
+
 		// dynamic-scheduler:new
 		primManager.addPrimitive("new", new NewLogoSchedule());
-		
+
 		// matrix:copy mat => matrix object
-//		primManager.addPrimitive("copy", new Copy());
+		//		primManager.addPrimitive("copy", new Copy());
 
 		// matrix:pretty-print-text matrix => string containing formatted text
-//		primManager.addPrimitive("pretty-print-text", new PrettyPrintText());
+		//		primManager.addPrimitive("pretty-print-text", new PrettyPrintText());
 
 	}
 
@@ -241,7 +320,7 @@ extends org.nlogo.api.DefaultClassManager {
 		}
 		return (LogoSchedule) obj;
 	}
-	
+
 	public static class NewLogoSchedule extends DefaultReporter {
 
 		public Syntax getSyntax() {
@@ -251,32 +330,41 @@ extends org.nlogo.api.DefaultClassManager {
 
 		public Object report(Argument args[], Context context)
 				throws ExtensionException, LogoException {
-			LogoSchedule sched = new LogoSchedule(new ArrayList<Double>());
+			LogoSchedule sched = new LogoSchedule();
 			return sched;
 		}
 	}
 
-	public static class Get extends DefaultReporter {
+	public static class First extends DefaultReporter {
 
 		public Syntax getSyntax() {
-			return Syntax.reporterSyntax(new int[]{Syntax.WildcardType(),
-					Syntax.NumberType()},
+			return Syntax.reporterSyntax(new int[]{Syntax.WildcardType()},
 					Syntax.WildcardType());
 		}
 
 		public Object report(Argument args[], Context context)
 				throws ExtensionException, LogoException {
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
-			int index = args[1].getIntValue();
-
-			if (index < 0 || index >= sched.schedule.size()) {
-				throw new org.nlogo.api.ExtensionException(index + " is not avalid index for a schedule of size "
-						+ sched.schedule.size());
-			}
-			return sched.schedule.get(index);
+			return sched.schedule.first();
 		}
 	}
-	
+
+	public static class Next extends DefaultReporter {
+
+		public Syntax getSyntax() {
+			return Syntax.reporterSyntax(new int[]{Syntax.WildcardType()},
+					Syntax.WildcardType());
+		}
+
+		public Object report(Argument args[], Context context)
+				throws ExtensionException, LogoException {
+			LogoSchedule sched = getScheduleFromArgument(args[0]);
+			Object toReturn = sched.schedule.first();
+			sched.schedule.remove(toReturn);
+			return toReturn;
+		}
+	}
+
 	public static class GetSize extends DefaultReporter {
 
 		public Syntax getSyntax() {
@@ -296,76 +384,87 @@ extends org.nlogo.api.DefaultClassManager {
 
 		public Syntax getSyntax() {
 			return Syntax.commandSyntax(new int[]{Syntax.WildcardType(),
-					Syntax.WildcardType()});
+					Syntax.WildcardType(),
+					Syntax.WildcardType(),
+					Syntax.NumberType()});
 		}
 
 		public void perform(Argument args[], Context context)
 				throws ExtensionException, LogoException {
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
-			sched.schedule.add(args[1].getDoubleValue());
+			try {
+				ExtensionContext extcontext = (ExtensionContext) context;
+				extcontext.workspace().outputObject("agent: "+args[1].getAgent()+" task: "+args[2].getCommandTask().toString(), 
+						null, true, true,OutputDestination.OUTPUT_AREA);
+			} catch (LogoException e) {
+				throw new ExtensionException(e);
+			}
+			LogoEvent event = (new DynamicSchedulerExtension()).new LogoEvent(args[1].getAgent(),args[2].getCommandTask(),args[3].getDoubleValue());
+			sched.schedule.add(event);
 		}
 	}
 
-//	public static class Copy extends DefaultReporter {
-//
-//		public Syntax getSyntax() {
-//			return Syntax.reporterSyntax(new int[]{Syntax.WildcardType()},
-//					Syntax.WildcardType());
-//		}
-//
-//		public Object report(Argument args[], Context context)
-//				throws ExtensionException, LogoException {
-//			return new LogoMatrix(getMatrixFromArgument(args[0]).matrix.copy());
-//		}
-//	}
+	//	public static class Copy extends DefaultReporter {
+	//
+	//		public Syntax getSyntax() {
+	//			return Syntax.reporterSyntax(new int[]{Syntax.WildcardType()},
+	//					Syntax.WildcardType());
+	//		}
+	//
+	//		public Object report(Argument args[], Context context)
+	//				throws ExtensionException, LogoException {
+	//			return new LogoMatrix(getMatrixFromArgument(args[0]).matrix.copy());
+	//		}
+	//	}
 
-//	public static class PrettyPrintText extends DefaultReporter {
-//
-//		public Syntax getSyntax() {
-//			return Syntax.reporterSyntax(new int[]{Syntax.WildcardType()},
-//					Syntax.StringType());
-//		}
-//
-//		public Object report(Argument args[], Context context)
-//				throws ExtensionException, LogoException {
-//
-//			double[][] dArray = getMatrixFromArgument(args[0]).matrix.getArray();
-//			int maxLen[] = new int[dArray[0].length];
-//			for (int j = 0; j < dArray[0].length; j++) {
-//				maxLen[j] = 0;
-//			}
-//			for (int i = 0; i < dArray.length; i++) {
-//				for (int j = 0; j < dArray[i].length; j++) {
-//					int len = org.nlogo.api.Dump.number(dArray[i][j]).length();
-//					if (len > maxLen[j]) {
-//						maxLen[j] = len;
-//					}
-//				}
-//			}
-//
-//			StringBuilder buf = new StringBuilder();
-//			buf.append("[");
-//			for (int i = 0; i < dArray.length; i++) {
-//				if (i > 0) {
-//					buf.append(" ");
-//				}
-//				buf.append("[");
-//				for (int j = 0; j < dArray[i].length; j++) {
-//					if (j != 0) {
-//						buf.append(" ");
-//					}
-//					buf.append(" ");
-//					buf.append(String.format("%" + maxLen[j] + "s", org.nlogo.api.Dump.number(dArray[i][j])));
-//				}
-//				buf.append(" ]");
-//				if (i < dArray.length - 1) {
-//					buf.append("\n");
-//				}
-//			}
-//			buf.append("]");
-//			return buf.toString();
-//		}
-//	}
+	//	public static class PrettyPrintText extends DefaultReporter {
+	//
+	//		public Syntax getSyntax() {
+	//			return Syntax.reporterSyntax(new int[]{Syntax.WildcardType()},
+	//					Syntax.StringType());
+	//		}
+	//
+	//		public Object report(Argument args[], Context context)
+	//				throws ExtensionException, LogoException {
+	//
+	//			double[][] dArray = getMatrixFromArgument(args[0]).matrix.getArray();
+	//			int maxLen[] = new int[dArray[0].length];
+	//			for (int j = 0; j < dArray[0].length; j++) {
+	//				maxLen[j] = 0;
+	//			}
+	//			for (int i = 0; i < dArray.length; i++) {
+	//				for (int j = 0; j < dArray[i].length; j++) {
+	//					int len = org.nlogo.api.Dump.number(dArray[i][j]).length();
+	//					if (len > maxLen[j]) {
+	//						maxLen[j] = len;
+	//					}
+	//				}
+	//			}
+	//
+	//			StringBuilder buf = new StringBuilder();
+	//			buf.append("[");
+	//			for (int i = 0; i < dArray.length; i++) {
+	//				if (i > 0) {
+	//					buf.append(" ");
+	//				}
+	//				buf.append("[");
+	//				for (int j = 0; j < dArray[i].length; j++) {
+	//					if (j != 0) {
+	//						buf.append(" ");
+	//					}
+	//					buf.append(" ");
+	//					buf.append(String.format("%" + maxLen[j] + "s", org.nlogo.api.Dump.number(dArray[i][j])));
+	//				}
+	//				buf.append(" ]");
+	//				if (i < dArray.length - 1) {
+	//					buf.append("\n");
+	//				}
+	//			}
+	//			buf.append("]");
+	//			return buf.toString();
+	//		}
+	//	}
 
 
 }
+
