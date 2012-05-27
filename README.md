@@ -18,6 +18,10 @@ If compilation succeeds, `dynamic-scheduler.jar` will be created.
 
 Colin Sheppard
 
+## Credits
+
+I relied heavily on the Netlogo matrix extension for guidance and as a template in the development of this extension.
+
 ## Terms of Use
 
 [![CC0](http://i.creativecommons.org/p/zero/1.0/88x31.png)](http://creativecommons.org/publicdomain/zero/1.0/)

@@ -15,19 +15,15 @@ endif
 
 SRCS=$(wildcard src/*.java)
 
-matrix.jar matrix.jar.pack.gz: $(SRCS) Jama-1.0.2.jar Jama-1.0.2.jar.pack.gz manifest.txt
+dynamic-scheduler.jar dynamic-scheduler.jar.pack.gz: $(SRCS) manifest.txt
 	mkdir -p classes
-	$(JAVA_HOME)/bin/javac -g -encoding us-ascii -source 1.5 -target 1.5 -classpath $(NETLOGO)/NetLogoLite.jar$(COLON)Jama-1.0.2.jar -d classes $(SRCS)
-	jar cmf manifest.txt matrix.jar -C classes .
-	pack200 --modification-time=latest --effort=9 --strip-debug --no-keep-file-order --unknown-attribute=strip matrix.jar.pack.gz matrix.jar
+	$(JAVA_HOME)/bin/javac -g -encoding us-ascii -source 1.5 -target 1.5 -classpath $(NETLOGO)/NetLogoLite.jar -d classes $(SRCS)
+	jar cmf manifest.txt dynamic-scheduler.jar -C classes .
+	pack200 --modification-time=latest --effort=9 --strip-debug --no-keep-file-order --unknown-attribute=strip dynamic-scheduler.jar.pack.gz dynamic-scheduler.jar
 
-Jama-1.0.2.jar Jama-1.0.2.jar.pack.gz:
-	curl -f -S 'http://ccl.northwestern.edu/devel/Jama-1.0.2.jar' -o Jama-1.0.2.jar
-	pack200 --modification-time=latest --effort=9 --strip-debug --no-keep-file-order --unknown-attribute=strip Jama-1.0.2.jar.pack.gz Jama-1.0.2.jar
-
-matrix.zip: matrix.jar
-	rm -rf matrix
-	mkdir matrix
-	cp -rp matrix.jar matrix.jar.pack.gz Jama-1.0.2.jar Jama-1.0.2.jar.pack.gz README.md Makefile src manifest.txt matrix
-	zip -rv matrix.zip matrix
-	rm -rf matrix
+dynamic-scheduler.zip: dynamic-scheduler.jar
+	rm -rf dynamic-scheduler
+	mkdir dynamic-scheduler
+	cp -rp dynamic-scheduler.jar dynamic-scheduler.jar.pack.gz README.md Makefile src manifest.txt dynamic-scheduler
+	zip -rv dynamic-scheduler dynamic-scheduler
+	rm -rf dynamic-scheduler
