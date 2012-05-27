@@ -14,7 +14,7 @@ Use the NETLOGO environment variable to tell the Makefile which NetLogoLite.jar 
 
 If compilation succeeds, `dynamic-scheduler.jar` will be created.
 
-## Authoer
+## Author
 
 Colin Sheppard
 
