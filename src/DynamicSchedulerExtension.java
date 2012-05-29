@@ -1,8 +1,10 @@
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.NoSuchElementException;
 import java.util.TreeSet;
 
 import org.nlogo.agent.ArrayAgentSet;
+import org.nlogo.agent.World;
 import org.nlogo.api.*;
 import org.nlogo.nvm.ExtensionContext;
 import org.nlogo.nvm.Workspace.OutputDestination;
@@ -277,11 +279,13 @@ extends org.nlogo.api.DefaultClassManager {
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
 			Double ticks = extcontext.workspace().world().ticks();
 			Boolean firstIteration = true;
-			Object[] newArgs = new Object[1];
+			Object[] emptyArgs = new Object[0];
 			// The outter while loop is here to catch any new events created dynamically during execution of the
 			// already scheduled events
-			LogoEvent event = sched.schedule.first();
+			LogoEvent event = sched.schedule.isEmpty() ? null : sched.schedule.first();
 			while(event != null && event.tick < ticks + 1.0){
+				org.nlogo.nvm.CommandTask nvmTask = (org.nlogo.nvm.CommandTask) event.task;
+				org.nlogo.agent.Agent agentAgent = (org.nlogo.agent.Agent) event.agent;
 				try {
 					extcontext.workspace().outputObject("performing event-id: "+event.id+" with event tick:"+event.tick+" on ticks: "+ticks, 
 							null, true, true,OutputDestination.OUTPUT_AREA);
@@ -289,12 +293,20 @@ extends org.nlogo.api.DefaultClassManager {
 					throw new ExtensionException(e);
 				}
 				sched.schedule.remove(event);
-				event.task.perform(context, newArgs);
-				event = sched.schedule.first();
-					//ArrayAgentSet agents = new ArrayAgentSet(event.agent.getClass(),1,true,event.agent.world());
-					//extcontext.nvmContext().runExclusiveJob(agentset, address)
-					//org.nlogo.nvm.Context runContext = new org.nlogo.nvm.Context(extcontext.nvmContext(), event.agent); 
-					//event.task.perform(context, newArgs);
+				
+				ArrayAgentSet agentSet = new ArrayAgentSet(agentAgent.getAgentClass(),1,false,(World) event.agent.world());
+				agentSet.add(agentAgent);
+				org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job, agentAgent,extcontext.nvmContext().ip,extcontext.nvmContext().activation);
+				try {
+					extcontext.workspace().outputObject("nvmContext.agent: "+nvmContext.agent,							
+							null, true, true,OutputDestination.OUTPUT_AREA);
+				} catch (LogoException e) {
+					throw new ExtensionException(e);
+				}
+				 
+				nvmTask.perform(nvmContext, emptyArgs);
+				
+				event = sched.schedule.isEmpty() ? null : sched.schedule.first();
 			}
 		}
 	}
