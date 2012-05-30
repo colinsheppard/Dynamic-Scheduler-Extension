@@ -262,23 +262,13 @@ extends org.nlogo.api.DefaultClassManager {
 			if (!(args[2].get() instanceof CommandTask)) throw new ExtensionException("dynamic-scheduler:add expecting a command task as the third argument");
 			if (!args[3].get().getClass().equals(Double.class)) throw new ExtensionException("dynamic-scheduler:add expecting a number as the fourth argument");
 			
-			org.nlogo.agent.ArrayAgentSet agentSet = null;
+			org.nlogo.agent.AgentSet agentSet = null;
 			if (args[1].get() instanceof org.nlogo.agent.Agent){
 				org.nlogo.agent.Agent theAgent = (org.nlogo.agent.Agent)args[1].getAgent();
 				agentSet = new ArrayAgentSet(theAgent.getAgentClass(),1,false,(World) theAgent.world());
 				agentSet.add(theAgent);
 			}else{
-				if(args[1].getAgentSet() instanceof ArrayAgentSet){
-					agentSet = (ArrayAgentSet) args[1].getAgentSet();
-				}else{
-					if(debug)printToConsole(context,"iterating over agent set of class "+args[1].getAgentSet().getClass());
-					java.util.Iterator<Agent> iter = args[1].getAgentSet().agents().iterator();
-					while(iter.hasNext()){
-						org.nlogo.agent.Agent theAgent = (org.nlogo.agent.Agent) iter.next();
-						if(agentSet == null) agentSet = new ArrayAgentSet(theAgent.getAgentClass(),1,false,(World) theAgent.world());
-						agentSet.add(theAgent);
-					}
-				}
+				agentSet = (org.nlogo.agent.AgentSet) args[1].getAgentSet();
 			}
 			if(debug)printToConsole(context,"scheduling agents: "+agentSet+" task: "+args[2].getCommandTask().toString()+" tick: "+args[3].getDoubleValue());
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
