@@ -3,6 +3,7 @@ import java.util.Comparator;
 import java.util.NoSuchElementException;
 import java.util.TreeSet;
 
+import org.nlogo.agent.AgentSet.Iterator;
 import org.nlogo.agent.ArrayAgentSet;
 import org.nlogo.agent.World;
 import org.nlogo.api.*;
@@ -31,12 +32,12 @@ extends org.nlogo.api.DefaultClassManager {
 	implements org.nlogo.api.ExtensionObject {
 		private final long id;
 		public Double tick = null;
-		public CommandTask task = null;
-		public Agent agent = null;
+		public org.nlogo.nvm.CommandTask task = null;
+		public org.nlogo.agent.AgentSet agents = null;
 
-		LogoEvent(Agent agent, CommandTask task, Double tick) {
-			this.agent = agent;
-			this.task = task;
+		LogoEvent(org.nlogo.agent.AgentSet agents, CommandTask task, Double tick) {
+			this.agents = agents;
+			this.task = (org.nlogo.nvm.CommandTask) task;
 			this.tick = tick;
 			events.put(this, nextEvent);
 			this.id = nextEvent;
@@ -44,8 +45,8 @@ extends org.nlogo.api.DefaultClassManager {
 		}
 
 		public void replaceData(Agent agent, CommandTask task, Double tick) {
-			this.agent = agent;
-			this.task = task;
+			this.agents = agents;
+			this.task = (org.nlogo.nvm.CommandTask) task;
 			this.tick = tick;
 		}
 
@@ -71,7 +72,7 @@ extends org.nlogo.api.DefaultClassManager {
 		}
 
 		public String dump(boolean arg0, boolean arg1, boolean arg2) {
-			return tick + ((agent==null)?"":agent.toString()) + ((task==null)?"":task.toString());
+			return tick + ((agents==null)?"":agents.toString()) + ((task==null)?"":task.toString());
 		}
 	}
 	private static class LogoSchedule implements org.nlogo.api.ExtensionObject {
@@ -164,7 +165,7 @@ extends org.nlogo.api.DefaultClassManager {
 		// dynamic-scheduler:add
 		primManager.addPrimitive("add", new Add());
 		// dynamic-scheduler:new
-		primManager.addPrimitive("new", new NewLogoSchedule());
+		primManager.addPrimitive("create", new NewLogoSchedule());
 		// dynamic-scheduler:go
 		primManager.addPrimitive("go", new PerformScheduledTasks());
 
@@ -179,8 +180,8 @@ extends org.nlogo.api.DefaultClassManager {
 			throws ExtensionException, LogoException {
 		Object obj = arg.get();
 		if (!(obj instanceof LogoSchedule)) {
-			throw new org.nlogo.api.ExtensionException("not a dynamic schedule: "
-					+ org.nlogo.api.Dump.logoObject(obj));
+			throw new ExtensionException("not a dynamic schedule: "
+					+ Dump.logoObject(obj));
 		}
 		return (LogoSchedule) obj;
 	}
@@ -255,9 +256,33 @@ extends org.nlogo.api.DefaultClassManager {
 
 		public void perform(Argument args[], Context context)
 				throws ExtensionException, LogoException {
-			if(debug)printToConsole(context,"scheduling agent: "+args[1].getAgent()+" task: "+args[2].getCommandTask().toString()+" tick: "+args[3].getDoubleValue());
+			if(args.length<4)throw new ExtensionException("dynamic-scheduler:add must have 4 arguments: schedule agent tick task");
+			if (!(args[0].get() instanceof LogoSchedule)) throw new ExtensionException("dynamic-scheduler:add expecting a schedule as the first argument");
+			if (!(args[1].get() instanceof Agent) && !(args[1].get() instanceof AgentSet)) throw new ExtensionException("dynamic-scheduler:add expecting an agent or agent set as the second argument");
+			if (!(args[2].get() instanceof CommandTask)) throw new ExtensionException("dynamic-scheduler:add expecting a command task as the third argument");
+			if (!args[3].get().getClass().equals(Double.class)) throw new ExtensionException("dynamic-scheduler:add expecting a number as the fourth argument");
+			
+			org.nlogo.agent.ArrayAgentSet agentSet = null;
+			if (args[1].get() instanceof org.nlogo.agent.Agent){
+				org.nlogo.agent.Agent theAgent = (org.nlogo.agent.Agent)args[1].getAgent();
+				agentSet = new ArrayAgentSet(theAgent.getAgentClass(),1,false,(World) theAgent.world());
+				agentSet.add(theAgent);
+			}else{
+				if(args[1].getAgentSet() instanceof ArrayAgentSet){
+					agentSet = (ArrayAgentSet) args[1].getAgentSet();
+				}else{
+					if(debug)printToConsole(context,"iterating over agent set of class "+args[1].getAgentSet().getClass());
+					java.util.Iterator<Agent> iter = args[1].getAgentSet().agents().iterator();
+					while(iter.hasNext()){
+						org.nlogo.agent.Agent theAgent = (org.nlogo.agent.Agent) iter.next();
+						if(agentSet == null) agentSet = new ArrayAgentSet(theAgent.getAgentClass(),1,false,(World) theAgent.world());
+						agentSet.add(theAgent);
+					}
+				}
+			}
+			if(debug)printToConsole(context,"scheduling agents: "+agentSet+" task: "+args[2].getCommandTask().toString()+" tick: "+args[3].getDoubleValue());
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
-			LogoEvent event = (new DynamicSchedulerExtension()).new LogoEvent(args[1].getAgent(),args[2].getCommandTask(),args[3].getDoubleValue());
+			LogoEvent event = (new DynamicSchedulerExtension()).new LogoEvent(agentSet,args[2].getCommandTask(),args[3].getDoubleValue());
 			sched.schedule.add(event);
 		}
 	}
@@ -276,15 +301,13 @@ extends org.nlogo.api.DefaultClassManager {
 			Object[] emptyArgs = new Object[0]; // This extension is only for CommandTasks, so we know there aren't any args to pass in
 			LogoEvent event = sched.schedule.isEmpty() ? null : sched.schedule.first();
 			while(event != null && event.tick < ticks + 1.0){
-				org.nlogo.nvm.CommandTask nvmTask = (org.nlogo.nvm.CommandTask) event.task;
-				org.nlogo.agent.Agent agentAgent = (org.nlogo.agent.Agent) event.agent;
-				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agent+" with tick:"+event.tick+" on ticks: "+ticks);
+				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agents+" with tick:"+event.tick+" on ticks: "+ticks);
 				
-				ArrayAgentSet agentSet = new ArrayAgentSet(agentAgent.getAgentClass(),1,false,(World) event.agent.world());
-				agentSet.add(agentAgent);
-				org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job, agentAgent,extcontext.nvmContext().ip,extcontext.nvmContext().activation);
-				 
-				nvmTask.perform(nvmContext, emptyArgs);
+				Iterator iter = event.agents.iterator();
+				while(iter.hasNext()){
+					org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job,iter.next(),extcontext.nvmContext().ip,extcontext.nvmContext().activation);
+					event.task.perform(nvmContext, emptyArgs);
+				}
 				
 				sched.schedule.remove(event);
 				event = sched.schedule.isEmpty() ? null : sched.schedule.first();
