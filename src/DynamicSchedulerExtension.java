@@ -79,8 +79,10 @@ extends org.nlogo.api.DefaultClassManager {
 		private final long id;
 		LogoEventComparator comparator = (new DynamicSchedulerExtension()).new LogoEventComparator();
 		TreeSet<LogoEvent> schedule = new TreeSet<LogoEvent>(comparator);
+		Double latestTick = 0.0;
 		
-		LogoSchedule() {
+		LogoSchedule(Double ticks) {
+			latestTick = ticks;
 			schedules.put(this, nextSchedule);
 			this.id = nextSchedule;
 			nextSchedule++;
@@ -195,7 +197,7 @@ extends org.nlogo.api.DefaultClassManager {
 
 		public Object report(Argument args[], Context context)
 				throws ExtensionException, LogoException {
-			LogoSchedule sched = new LogoSchedule();
+			LogoSchedule sched = new LogoSchedule(((ExtensionContext) context).workspace().world().ticks());
 			return sched;
 		}
 	}
@@ -258,9 +260,12 @@ extends org.nlogo.api.DefaultClassManager {
 				throws ExtensionException, LogoException {
 			if(args.length<4)throw new ExtensionException("dynamic-scheduler:add must have 4 arguments: schedule agent tick task");
 			if (!(args[0].get() instanceof LogoSchedule)) throw new ExtensionException("dynamic-scheduler:add expecting a schedule as the first argument");
+			LogoSchedule sched = getScheduleFromArgument(args[0]);
 			if (!(args[1].get() instanceof Agent) && !(args[1].get() instanceof AgentSet)) throw new ExtensionException("dynamic-scheduler:add expecting an agent or agent set as the second argument");
 			if (!(args[2].get() instanceof CommandTask)) throw new ExtensionException("dynamic-scheduler:add expecting a command task as the third argument");
 			if (!args[3].get().getClass().equals(Double.class)) throw new ExtensionException("dynamic-scheduler:add expecting a number as the fourth argument");
+			if (args[3].getDoubleValue() < ((ExtensionContext)context).workspace().world().ticks()) throw new ExtensionException("Attempted to schedule an event for tick "+args[3].getDoubleValue()+" which is before the present 'moment' of "+((ExtensionContext)context).workspace().world().ticks());
+			if (args[3].getDoubleValue() < sched.latestTick) throw new ExtensionException("Attempted to schedule an event for tick "+args[3].getDoubleValue()+" which is before the present 'moment' of "+sched.latestTick);
 			
 			org.nlogo.agent.AgentSet agentSet = null;
 			if (args[1].get() instanceof org.nlogo.agent.Agent){
@@ -271,7 +276,6 @@ extends org.nlogo.api.DefaultClassManager {
 				agentSet = (org.nlogo.agent.AgentSet) args[1].getAgentSet();
 			}
 			if(debug)printToConsole(context,"scheduling agents: "+agentSet+" task: "+args[2].getCommandTask().toString()+" tick: "+args[3].getDoubleValue());
-			LogoSchedule sched = getScheduleFromArgument(args[0]);
 			LogoEvent event = (new DynamicSchedulerExtension()).new LogoEvent(agentSet,args[2].getCommandTask(),args[3].getDoubleValue());
 			sched.schedule.add(event);
 		}
@@ -292,6 +296,7 @@ extends org.nlogo.api.DefaultClassManager {
 			LogoEvent event = sched.schedule.isEmpty() ? null : sched.schedule.first();
 			while(event != null && event.tick < ticks + 1.0){
 				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agents+" with tick:"+event.tick+" on ticks: "+ticks);
+				sched.latestTick = event.tick;
 				
 				Iterator iter = event.agents.iterator();
 				while(iter.hasNext()){
