@@ -23,6 +23,7 @@ extends org.nlogo.api.DefaultClassManager {
 	private static long nextSchedule = 0;
 	private static final java.util.WeakHashMap<LogoEvent, Long> events = new java.util.WeakHashMap<LogoEvent, Long>();
 	private static long nextEvent = 0;
+	private static boolean debug = true;
 
 	public class LogoEvent
 	// new NetLogo data types defined by extensions must implement
@@ -254,14 +255,8 @@ extends org.nlogo.api.DefaultClassManager {
 
 		public void perform(Argument args[], Context context)
 				throws ExtensionException, LogoException {
+			if(debug)printToConsole(context,"scheduling agent: "+args[1].getAgent()+" task: "+args[2].getCommandTask().toString()+" tick: "+args[3].getDoubleValue());
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
-			try {
-				ExtensionContext extcontext = (ExtensionContext) context;
-				extcontext.workspace().outputObject("scheduling agent: "+args[1].getAgent()+" task: "+args[2].getCommandTask().toString()+" tick: "+args[3].getDoubleValue(), 
-						null, true, true,OutputDestination.OUTPUT_AREA);
-			} catch (LogoException e) {
-				throw new ExtensionException(e);
-			}
 			LogoEvent event = (new DynamicSchedulerExtension()).new LogoEvent(args[1].getAgent(),args[2].getCommandTask(),args[3].getDoubleValue());
 			sched.schedule.add(event);
 		}
@@ -278,40 +273,33 @@ extends org.nlogo.api.DefaultClassManager {
 			ExtensionContext extcontext = (ExtensionContext) context;
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
 			Double ticks = extcontext.workspace().world().ticks();
-			Boolean firstIteration = true;
-			Object[] emptyArgs = new Object[0];
-			// The outter while loop is here to catch any new events created dynamically during execution of the
-			// already scheduled events
+			Object[] emptyArgs = new Object[0]; // This extension is only for CommandTasks, so we know there aren't any args to pass in
 			LogoEvent event = sched.schedule.isEmpty() ? null : sched.schedule.first();
 			while(event != null && event.tick < ticks + 1.0){
 				org.nlogo.nvm.CommandTask nvmTask = (org.nlogo.nvm.CommandTask) event.task;
 				org.nlogo.agent.Agent agentAgent = (org.nlogo.agent.Agent) event.agent;
-				try {
-					extcontext.workspace().outputObject("performing event-id: "+event.id+" with event tick:"+event.tick+" on ticks: "+ticks, 
-							null, true, true,OutputDestination.OUTPUT_AREA);
-				} catch (LogoException e) {
-					throw new ExtensionException(e);
-				}
-				sched.schedule.remove(event);
+				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agent+" with tick:"+event.tick+" on ticks: "+ticks);
 				
 				ArrayAgentSet agentSet = new ArrayAgentSet(agentAgent.getAgentClass(),1,false,(World) event.agent.world());
 				agentSet.add(agentAgent);
 				org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job, agentAgent,extcontext.nvmContext().ip,extcontext.nvmContext().activation);
-				try {
-					extcontext.workspace().outputObject("nvmContext.agent: "+nvmContext.agent,							
-							null, true, true,OutputDestination.OUTPUT_AREA);
-				} catch (LogoException e) {
-					throw new ExtensionException(e);
-				}
 				 
 				nvmTask.perform(nvmContext, emptyArgs);
 				
+				sched.schedule.remove(event);
 				event = sched.schedule.isEmpty() ? null : sched.schedule.first();
 			}
 		}
 	}
-
-
+	
+	private static void printToConsole(Context context, String msg) throws ExtensionException{
+		try {
+			ExtensionContext extcontext = (ExtensionContext) context;
+			extcontext.workspace().outputObject(msg,null, true, true,OutputDestination.OUTPUT_AREA);
+		} catch (LogoException e) {
+			throw new ExtensionException(e);
+		}
+	}
 
 }
 
