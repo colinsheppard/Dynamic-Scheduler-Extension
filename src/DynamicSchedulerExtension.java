@@ -344,13 +344,18 @@ extends org.nlogo.api.DefaultClassManager {
 			TickCounter tickCounter = extcontext.workspace().world().tickCounter;
 			Object[] emptyArgs = new Object[0]; // This extension is only for CommandTasks, so we know there aren't any args to pass in
 			LogoEvent event = sched.schedule.isEmpty() ? null : sched.schedule.first();
+			ArrayList<org.nlogo.agent.Agent> theAgents = new ArrayList<org.nlogo.agent.Agent>();
 			while(event != null){
 				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agents+" at tick:"+event.tick);
 				tickCounter.tick(event.tick-tickCounter.ticks());
 				
 				Iterator iter = event.agents.iterator();
+				theAgents.clear();
 				while(iter.hasNext()){
-					org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job,iter.next(),extcontext.nvmContext().ip,extcontext.nvmContext().activation);
+					theAgents.add(iter.next());
+				}
+				for(org.nlogo.agent.Agent theAgent : theAgents){
+					org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job,theAgent,extcontext.nvmContext().ip,extcontext.nvmContext().activation);
 					if(extcontext.nvmContext().stopping)return;
 					event.task.perform(nvmContext, emptyArgs);
 					if(nvmContext.stopping)return;
