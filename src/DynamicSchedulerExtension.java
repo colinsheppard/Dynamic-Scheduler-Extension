@@ -349,7 +349,7 @@ extends org.nlogo.api.DefaultClassManager {
 				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agents+" at tick:"+event.tick);
 				tickCounter.tick(event.tick-tickCounter.ticks());
 				
-				Iterator iter = event.agents.iterator();
+				Iterator iter = event.agents.shufflerator(extcontext.nvmContext().job.random);
 				theAgents.clear();
 				while(iter.hasNext()){
 					theAgents.add(iter.next());
