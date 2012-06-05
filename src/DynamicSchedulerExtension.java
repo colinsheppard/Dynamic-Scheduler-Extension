@@ -5,6 +5,7 @@ import java.util.TreeSet;
 
 import org.nlogo.agent.AgentSet.Iterator;
 import org.nlogo.agent.ArrayAgentSet;
+import org.nlogo.agent.TickCounter;
 import org.nlogo.agent.World;
 import org.nlogo.api.*;
 import org.nlogo.nvm.ExtensionContext;
@@ -265,7 +266,6 @@ extends org.nlogo.api.DefaultClassManager {
 			if (!(args[2].get() instanceof CommandTask)) throw new ExtensionException("dynamic-scheduler:add expecting a command task as the third argument");
 			if (!args[3].get().getClass().equals(Double.class)) throw new ExtensionException("dynamic-scheduler:add expecting a number as the fourth argument");
 			if (args[3].getDoubleValue() < ((ExtensionContext)context).workspace().world().ticks()) throw new ExtensionException("Attempted to schedule an event for tick "+args[3].getDoubleValue()+" which is before the present 'moment' of "+((ExtensionContext)context).workspace().world().ticks());
-			if (args[3].getDoubleValue() < sched.latestTick) throw new ExtensionException("Attempted to schedule an event for tick "+args[3].getDoubleValue()+" which is before the present 'moment' of "+sched.latestTick);
 			
 			org.nlogo.agent.AgentSet agentSet = null;
 			if (args[1].get() instanceof org.nlogo.agent.Agent){
@@ -291,12 +291,13 @@ extends org.nlogo.api.DefaultClassManager {
 				throws ExtensionException, LogoException {
 			ExtensionContext extcontext = (ExtensionContext) context;
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
-			Double ticks = extcontext.workspace().world().ticks();
+			TickCounter tickCounter = extcontext.workspace().world().tickCounter;
 			Object[] emptyArgs = new Object[0]; // This extension is only for CommandTasks, so we know there aren't any args to pass in
 			LogoEvent event = sched.schedule.isEmpty() ? null : sched.schedule.first();
-			while(event != null && event.tick < ticks + 1.0){
-				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agents+" with tick:"+event.tick+" on ticks: "+ticks);
+			while(event != null){
+				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agents+" at tick:"+event.tick);
 				sched.latestTick = event.tick;
+				tickCounter.tick(event.tick);
 				
 				Iterator iter = event.agents.iterator();
 				while(iter.hasNext()){
