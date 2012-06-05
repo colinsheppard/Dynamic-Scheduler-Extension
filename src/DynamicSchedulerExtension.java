@@ -183,6 +183,8 @@ extends org.nlogo.api.DefaultClassManager {
 		primManager.addPrimitive("create", new NewLogoSchedule());
 		// dynamic-scheduler:go
 		primManager.addPrimitive("go", new PerformScheduledTasks());
+		// dynamic-scheduler:go-until
+		primManager.addPrimitive("go-until", new PerformScheduledTasksUntil());
 
 		//		primManager.addPrimitive("copy", new Copy());
 		//		primManager.addPrimitive("pretty-print-text", new PrettyPrintText());
@@ -370,6 +372,53 @@ extends org.nlogo.api.DefaultClassManager {
 				// Grab the next event from the schedule
 				event = sched.schedule.isEmpty() ? null : sched.schedule.first();
 			}
+		}
+	}
+	
+	public static class PerformScheduledTasksUntil extends DefaultCommand {
+
+		public Syntax getSyntax() {
+			return Syntax.commandSyntax(new int[]{Syntax.WildcardType(),
+					Syntax.NumberType()});
+		}
+
+		public void perform(Argument args[], Context context)
+				throws ExtensionException, LogoException {
+			ExtensionContext extcontext = (ExtensionContext) context;
+			LogoSchedule sched = getScheduleFromArgument(args[0]);
+			if (!args[1].get().getClass().equals(Double.class)) throw new ExtensionException("dynamic-scheduler:go-until expecting a number as the second argument");
+			Double untilTick = args[1].getDoubleValue();
+			TickCounter tickCounter = extcontext.workspace().world().tickCounter;
+			Object[] emptyArgs = new Object[0]; // This extension is only for CommandTasks, so we know there aren't any args to pass in
+			LogoEvent event = sched.schedule.isEmpty() ? null : sched.schedule.first();
+			ArrayList<org.nlogo.agent.Agent> theAgents = new ArrayList<org.nlogo.agent.Agent>();
+			while(event != null && event.tick <= untilTick){
+				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agents+" at tick:"+event.tick);
+				
+				tickCounter.tick(event.tick-tickCounter.ticks());
+				
+				Iterator iter = event.agents.shufflerator(extcontext.nvmContext().job.random);
+				theAgents.clear();
+				while(iter.hasNext()){
+					theAgents.add(iter.next());
+				}
+				for(org.nlogo.agent.Agent theAgent : theAgents){
+					org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job,theAgent,extcontext.nvmContext().ip,extcontext.nvmContext().activation);
+					if(extcontext.nvmContext().stopping)return;
+					event.task.perform(nvmContext, emptyArgs);
+					if(nvmContext.stopping)return;
+				}
+				
+				// Remove the current event as is from the schedule
+				sched.schedule.remove(event);
+				
+				// Reschedule the event if necessary
+				event.reschedule(sched);
+				
+				// Grab the next event from the schedule
+				event = sched.schedule.isEmpty() ? null : sched.schedule.first();
+			}
+			tickCounter.tick(untilTick-tickCounter.ticks());
 		}
 	}
 	
