@@ -1,7 +1,8 @@
 extensions [dynamic-scheduler]
-
+ 
 globals[
   schedule  ;; holds the dynamic schedule
+  running-tick 
 ]
 
 to setup
@@ -10,34 +11,33 @@ to setup
   print __dump-extension-prims
   __clear-all-and-reset-ticks
   
-  create-turtles 1 [set color red ]
+  create-turtles 5
   
-  set schedule dynamic-scheduler:new 
+  set schedule dynamic-scheduler:create
+  set running-tick 2
+   
+  ;;dynamic-scheduler:add schedule one-of turtles task go-forward 6.3 
+  ;;dynamic-scheduler:repeat schedule turtles task go-forward 6.3 10
+  ;;dynamic-scheduler:add schedule one-of turtles task go-forward 9
+  ;;dynamic-scheduler:add schedule one-of turtles task go-forward 3
+  dynamic-scheduler:add schedule turtles task go-forward 1.7
+  ;;dynamic-scheduler:add schedule one-of turtles task go-forward 3.001
   
-  dynamic-scheduler:add schedule one-of turtles task go-forward 6.3
-  dynamic-scheduler:add schedule one-of turtles task go-forward 9
-  dynamic-scheduler:add schedule one-of turtles task go-forward 3
-  dynamic-scheduler:add schedule one-of turtles task go-forward 6.7
-  dynamic-scheduler:add schedule one-of turtles task go-forward 3.001
-  
-;;  print dynamic-scheduler:next dyn-schedule 
-;;  print dynamic-scheduler:next dyn-schedule
-;;  print dynamic-scheduler:next dyn-schedule
-;;  print dynamic-scheduler:next dyn-schedule
-;;  print dynamic-scheduler:next dyn-schedule
+  ;;dynamic-scheduler:add schedule self task stop 1000
   
 end
 
+;; occurs inside a turtle context
 to go-forward
-  ask turtles[
     fd 2
-    dynamic-scheduler:add schedule self task go-forward ticks * 2
-  ]
+     if ticks > 50 [die] 
+  ;;  if ticks < 6 [ dynamic-scheduler:add schedule self task go-forward ticks + 6 ]
+    if ticks > 1000 [ stop ]
 end
 
 to go
-  tick
-  dynamic-scheduler:go schedule
+;;  dynamic-scheduler:go schedule
+  dynamic-scheduler:go-until schedule 200
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -92,6 +92,23 @@ BUTTON
 NIL
 go
 NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+68
+233
+131
+266
+NIL
+stop
+T
 1
 T
 OBSERVER
