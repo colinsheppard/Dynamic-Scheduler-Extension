@@ -25,7 +25,7 @@ extends org.nlogo.api.DefaultClassManager {
 	private static long nextSchedule = 0;
 	private static final java.util.WeakHashMap<LogoEvent, Long> events = new java.util.WeakHashMap<LogoEvent, Long>();
 	private static long nextEvent = 0;
-	private static boolean debug = true;
+	private static boolean debug = false;
 
 	public class LogoEvent
 	// new NetLogo data types defined by extensions must implement
