@@ -26,4 +26,4 @@ I relied heavily on the Netlogo matrix extension for guidance and as a template 
 
 [![CC0](http://i.creativecommons.org/p/zero/1.0/88x31.png)](http://creativecommons.org/publicdomain/zero/1.0/)
 
-The NetLogo matrix extension is in the public domain.  To the extent possible under law, Colin Sheppard has waived all copyright and related or neighboring rights.
+The NetLogo dynamic scheduler extension is in the public domain.  To the extent possible under law, Colin Sheppard has waived all copyright and related or neighboring rights.
