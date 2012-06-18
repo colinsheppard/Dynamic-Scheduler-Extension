@@ -2,49 +2,77 @@ extensions [dynamic-scheduler]
  
 globals[
   schedule  ;; holds the dynamic schedule
-  running-tick 
 ]
 
 to setup
-  ;;__reload-extensions
-  print __dump-extensions 
-  print __dump-extension-prims
+  ;;print __dump-extensions 
+  ;;print __dump-extension-prims
   __clear-all-and-reset-ticks
   
   create-turtles 5
   
+  ;; Create the 'schedule' which should be stored as a global
   set schedule dynamic-scheduler:create
-  set running-tick 2
-   
-  ;;dynamic-scheduler:add schedule one-of turtles task go-forward 6.3 
-  ;;dynamic-scheduler:repeat schedule turtles task go-forward 6.3 10
-  ;;dynamic-scheduler:add schedule one-of turtles task go-forward 9
-  ;;dynamic-scheduler:add schedule one-of turtles task go-forward 3
-  dynamic-scheduler:add schedule turtles task go-forward 1.7
-  ;;dynamic-scheduler:add schedule one-of turtles task go-forward 3.001
   
-  ;;dynamic-scheduler:add schedule self task stop 1000
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Now schedule some events (turtles or other agents must first be created to be assigned an event)
+  ;; 
+  ;; The following has 3 different examples of scheduling turtles, uncomment each to try them out.
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   
+  ;; Schedule all of the turtles to peform the "go-forward" procudure at tick 1
+;  dynamic-scheduler:add schedule turtles task go-forward 1
+  
+  ;; Schedule individual turtles to go forward at whatever tick we want, it's ok to add events 
+  ;; to the schedule out of order, they will be performed in order
+;  dynamic-scheduler:add schedule one-of turtles task go-forward 2.0
+;  dynamic-scheduler:add schedule one-of turtles task go-forward 2.5
+;  dynamic-scheduler:add schedule one-of turtles task go-forward 2.9
+;  dynamic-scheduler:add schedule one-of turtles task go-forward 2.2
+  
+  ;; Use the repeat primitive (which is identical to add but takes an additional argument: the repeat interval used
+  ;; to reschedule the event immediately after it has been performed) 
+;  dynamic-scheduler:repeat schedule one-of turtles task go-forward 3.25 1.0
 end
 
-;; occurs inside a turtle context
+;; Note: in this example model, go-forward occurs inside a turtle context, so self refers to the turtle performing the event
 to go-forward
-    fd 2
-     if ticks > 50 [die] 
-  ;;  if ticks < 6 [ dynamic-scheduler:add schedule self task go-forward ticks + 6 ]
-    if ticks > 1000 [ stop ]
+  print (word self " going forward at " ticks)
+  fd 2
+  if turtles-reschedule-themselves[
+    dynamic-scheduler:add schedule self task go-forward ticks + 10
+  ]
 end
 
+;; There are two ways to set the schedule into action, "go" and "go-until", go will continue to dispatch events until the
+;; stop primitive is called or the schedule runs out of events.  go-until will stop execution at a specified tick (taken as
+;; an argument).  Be careful using "go" if events recur either through using the repeat primitive or if events get scheduled
+;; dynamically.  It's usually best to either use go-until or schedule an event that stops execution at some point.  The stop
+;; button won't work with this extension to halt activity while a schedule is being dispatched.
 to go
-;;  dynamic-scheduler:go schedule
-  dynamic-scheduler:go-until schedule 200
+  setup
+  
+  ;; Schedule the stop action. Note, the turtle being passed to this event is essentially a dummy agent (no actual agent is 
+  ;; needed) but it must still be alive at the time that this event comes up or it won't get executed.
+  dynamic-scheduler:add schedule one-of turtles task stop-this-train go-until-tick
+  
+  dynamic-scheduler:go schedule
+end
+
+to go-until
+  setup
+  dynamic-scheduler:go-until schedule go-until-tick
+end
+
+to stop-this-train
+  stop
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-649
-470
+336
+18
+775
+478
 16
 16
 13.0
@@ -68,10 +96,10 @@ ticks
 30.0
 
 BUTTON
-65
-83
-131
-116
+28
+56
+94
+89
 NIL
 setup
 NIL
@@ -85,10 +113,10 @@ NIL
 1
 
 BUTTON
-55
-146
-118
-179
+27
+106
+90
+139
 NIL
 go
 NIL
@@ -102,11 +130,11 @@ NIL
 1
 
 BUTTON
-68
-233
-131
-266
-NIL
+18
+515
+421
+548
+stop button currently does not work with dynamic scheduler
 stop
 T
 1
@@ -117,6 +145,49 @@ NIL
 NIL
 NIL
 1
+
+SWITCH
+31
+295
+279
+328
+turtles-reschedule-themselves
+turtles-reschedule-themselves
+1
+1
+-1000
+
+BUTTON
+112
+106
+194
+139
+NIL
+go-until
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+27
+222
+199
+255
+go-until-tick
+go-until-tick
+0
+200
+100
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
