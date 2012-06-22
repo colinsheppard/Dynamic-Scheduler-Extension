@@ -88,6 +88,10 @@ If compilation succeeds, `dynamic-scheduler.jar` will be created.
 
 Colin Sheppard
 
+## Feedback? Bugs? Feature Requests?
+
+Please visit the [github issue tracker](https://github.com/colinsheppard/Dynamic-Scheduler-Extension/issues?state=open) to submit comments, bug reports, or requests for features.  I'm also more than willing to accept pull requests.
+
 ## Credits
 
 I relied heavily on the Netlogo matrix extension for guidance and as a template in the development of this extension.  Allison Campbell helped develop the benchmark model to compare dynamic scheduling to the Netlogo status quo of static scheduling.
