@@ -351,7 +351,10 @@ extends org.nlogo.api.DefaultClassManager {
 				if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agents+" at tick:"+event.tick);
 				tickCounter.tick(event.tick-tickCounter.ticks());
 				
-				Iterator iter = event.agents.shufflerator(extcontext.nvmContext().job.random);
+				// The following step is necessary in case the agent dies during the perform, if we iterate directly over
+				// the agentset iterator, we'll get a concurrent modification exception when the agent dies and netlogo
+				// attempts to remove the agent from the set.
+				Iterator iter = event.agents.iterator();
 				theAgents.clear();
 				while(iter.hasNext()){
 					theAgents.add(iter.next());
@@ -397,7 +400,10 @@ extends org.nlogo.api.DefaultClassManager {
 				
 				tickCounter.tick(event.tick-tickCounter.ticks());
 				
-				Iterator iter = event.agents.shufflerator(extcontext.nvmContext().job.random);
+				// The following step is necessary in case the agent dies during the perform, if we iterate directly over
+				// the agentset iterator, we'll get a concurrent modification exception when the agent dies and netlogo
+				// attempts to remove the agent from the set.
+				Iterator iter = event.agents.iterator();
 				theAgents.clear();
 				while(iter.hasNext()){
 					theAgents.add(iter.next());

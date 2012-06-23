@@ -24,6 +24,16 @@ Now add "extensions\[dynamic-scheduler\]" to the top of any Netlogo model where 
 
 See the example models in the extension subfolder "example" for a demonstration of usage.
 
+## Behavior
+
+dynamic-scheduler has the following behavior:
+
+* If multiple events are scheduled for the same time, they are dispatch in the order in which they are added to the schedule.
+
+* When an agentset is scheduled to perform an event, the individual agents execute the procedure in the same order as *ask*, i.e. the default iteration order used by Netlogo.  To shuffle the order, the agentset must be shuffled during the add (e.g. "(turtle-set (sort-by [true] turtles))").
+
+* If an agent is scheduled to perform a task in the future but dies before the event is dispatched, the event will be silently skipped.
+
 ## Primitives
 
 **dynamic-scheduler:create**
