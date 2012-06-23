@@ -3,35 +3,31 @@ extensions[dynamic-scheduler]
 globals[
   schedule
 ]
-  
 
 to setup
-
   clear-all
   reset-ticks
   ask patches[
      set pcolor yellow   ; Yellow means the trap has not triggered
   ]
   set schedule dynamic-scheduler:create
-  dynamic-scheduler:add schedule one-of patches task pop 1.0
 end
 
-to pop
-    set pcolor red   ; Show the snap
-    wait 0.05        ; So we can see things happen on the View
-    set pcolor black ; Black means the trap has triggered
+to pop 
+  if pcolor = yellow[ ; This test avoids popping a patch that happens to be
+                      ; scheduled to be hit by more than one ball
+    set pcolor red    ; Show the snap
+    wait 0.01         ; So we can see things happen on the View
+    set pcolor black  ; Black means the trap has triggered
  
     update-custom-plots
  
     ; Send 2 balls in air, determine where and when they land
-    ask n-of 2 patches in-radius 5 
-    [
-      if pcolor = yellow ; Patch only triggers if it has not already
-      [
+    ask n-of 2 patches in-radius 5[
         ; Set the time when the ball will land on and trigger trap
         dynamic-scheduler:add schedule self task pop (ticks + (random-float 0.2 * distance myself))
-      ]
     ]
+  ]
 end
 
 to update-custom-plots
@@ -44,9 +40,20 @@ to update-custom-plots
 end
 
 to start
-  ; Set off one trap to start the action
+  ; Set off one trap to start the action, pick from yellow patches so this method can
+  ; be invoked multiple times
+  ask one-of patches with [pcolor = yellow][ 
+    dynamic-scheduler:add schedule self task pop ticks + 1.0
+  ]
+  
+  ; Dispatch the schedule
   dynamic-scheduler:go schedule
   
+  ; In the unusual case that all of the traps have been triggered, reset the board
+  ; to avoid an error if the user clicks "start" again.
+  if count patches with [pcolor = yellow] = 0 [
+    setup
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
