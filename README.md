@@ -10,7 +10,7 @@ The dynamic scheduler extension enables a different approach toward scheduling a
 
 Dynamic scheduling is most useful for models where agents spend a lot of time not doing anything *even though* the modeler knows when they need to act next. Sometimes in a netlogo model, you end up testing a certain condition or set of conditions for every agent every tick (usually in the form of an “ask”), just waiting for the time to be ripe.... this can get cumbersome and expensive.  In some models, you might know in advance exactly when a particular agent needs to act. Dynamic scheduling cuts out all of those superfluous tests.  The action is performed only when needed, with no condition testing and very little overhead.
 
-For example, if an agent is a state machine and spends most of the time in the state “at rest” and has a predictable schedule that knows that the agent should transition to the state “awake” at tick 105, then using a dynamic scheduler allows you to avoid putting something like "if ticks == 105 \[ do-something \]", which has to be evaluated every tick!
+For example, if an agent is a state machine and spends most of the time in the state “at rest” and has a predictable schedule that knows that the agent should transition to the state “awake” at tick 105, then using a dynamic scheduler allows you to avoid putting something like "if ticks = 105 \[ do-something \]", which has to be evaluated every tick!
 
 ## Installing
 
@@ -28,7 +28,7 @@ See the example models in the extension subfolder "example" for a demonstration 
 
 dynamic-scheduler has the following behavior:
 
-* If multiple events are scheduled for the same time, they are dispatch in the order in which they are added to the schedule.
+* If multiple events are scheduled for the exact same time, they are dispatched in the order in which they are added to the schedule.
 
 * When an agentset is scheduled to perform an event, the individual agents execute the procedure in the same order as *ask*, i.e. the default iteration order used by Netlogo.  To shuffle the order, the agentset must be shuffled during the add (e.g. "(turtle-set (sort-by [true] turtles))").
 
@@ -85,6 +85,18 @@ Dispatch all of the events in *schedule*.  It's important to note that this will
 Dispatch all of the events in *schedule* up until *halt-time*.  If the temporal extent of your model is known in advance, this variant on *dynamic-scheduler:go* is the recommended way to dispatch your model.
 
     dynamic-scheduler:go-until schedule 100.0
+
+---------------------------------------
+
+**dynamic-scheduler:size-of** 
+
+*dynamic-scheduler:size-of schedule*
+
+Reports the number of events in the schedule.
+
+    if dynamic-scheduler:size-of schedule > 0[
+      dynamic-scheduler:go schedule
+    ]
 
 ## Building
 
