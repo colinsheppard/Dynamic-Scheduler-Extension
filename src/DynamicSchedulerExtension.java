@@ -257,8 +257,8 @@ extends org.nlogo.api.DefaultClassManager {
 		public Object report(Argument args[], Context context)
 				throws ExtensionException, LogoException {
 			LogoSchedule sched = getScheduleFromArgument(args[0]);
-
-			return sched.schedule.size();
+			if(debug)printToConsole(context, "size of schedule: "+sched.schedule.size());
+			return new Double(sched.schedule.size());
 		}
 	}
 
