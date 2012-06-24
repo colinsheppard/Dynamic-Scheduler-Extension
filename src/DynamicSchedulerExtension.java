@@ -11,8 +11,13 @@ import org.nlogo.api.*;
 import org.nlogo.nvm.ExtensionContext;
 import org.nlogo.nvm.Workspace.OutputDestination;
 
+
 public class DynamicSchedulerExtension
 extends org.nlogo.api.DefaultClassManager {
+
+	public enum AddType {
+		DEFAULT, SHUFFLE, REPEAT
+	}
 
 	public java.util.List<String> additionalJars() {
 		java.util.List<String> list = new java.util.ArrayList<String>();
@@ -25,7 +30,7 @@ extends org.nlogo.api.DefaultClassManager {
 	private static long nextSchedule = 0;
 	private static final java.util.WeakHashMap<LogoEvent, Long> events = new java.util.WeakHashMap<LogoEvent, Long>();
 	private static long nextEvent = 0;
-	private static boolean debug = true;
+	private static boolean debug = false;
 
 	public class LogoEvent
 	// new NetLogo data types defined by extensions must implement
@@ -36,12 +41,14 @@ extends org.nlogo.api.DefaultClassManager {
 		public org.nlogo.nvm.CommandTask task = null;
 		public org.nlogo.agent.AgentSet agents = null;
 		public Double repeatInterval = null;
+		public Boolean shuffleAgentSet = null;
 
-		LogoEvent(org.nlogo.agent.AgentSet agents, CommandTask task, Double tick, Double repeatInterval) {
+		LogoEvent(org.nlogo.agent.AgentSet agents, CommandTask task, Double tick, Double repeatInterval, Boolean shuffleAgentSet) {
 			this.agents = agents;
 			this.task = (org.nlogo.nvm.CommandTask) task;
 			this.tick = tick;
 			this.repeatInterval = repeatInterval;
+			this.shuffleAgentSet = shuffleAgentSet;
 			events.put(this, nextEvent);
 			this.id = nextEvent;
 			nextEvent++;
@@ -177,6 +184,8 @@ extends org.nlogo.api.DefaultClassManager {
 		primManager.addPrimitive("next", new Next());
 		// dynamic-scheduler:add
 		primManager.addPrimitive("add", new Add());
+		// dynamic-scheduler:add-shuffled
+		primManager.addPrimitive("add-shuffled", new AddShuffled());
 		// dynamic-scheduler:repeat
 		primManager.addPrimitive("repeat", new Repeat());
 		// dynamic-scheduler:new
@@ -261,10 +270,22 @@ extends org.nlogo.api.DefaultClassManager {
 					Syntax.NumberType()});
 		}
 		public void perform(Argument args[], Context context) throws ExtensionException, LogoException {
-			addEvent(args,context);
+			addEvent(args,context,AddType.DEFAULT);
 		}
 	}
-	
+
+	public static class AddShuffled extends DefaultCommand {
+		public Syntax getSyntax() {
+			return Syntax.commandSyntax(new int[]{Syntax.WildcardType(),
+					Syntax.WildcardType(),
+					Syntax.WildcardType(),
+					Syntax.NumberType()});
+		}
+		public void perform(Argument args[], Context context) throws ExtensionException, LogoException {
+			addEvent(args,context,AddType.SHUFFLE);
+		}
+	}
+
 	public static class Repeat extends DefaultCommand {
 		public Syntax getSyntax() {
 			return Syntax.commandSyntax(new int[]{Syntax.WildcardType(),
@@ -274,20 +295,27 @@ extends org.nlogo.api.DefaultClassManager {
 					Syntax.NumberType()});
 		}
 		public void perform(Argument args[], Context context) throws ExtensionException, LogoException {
-			addEvent(args,context,true);
+			addEvent(args,context,AddType.REPEAT);
 		}
 	}
 
-	private static void addEvent(Argument args[], Context context) throws ExtensionException, LogoException {
-		addEvent(args, context,false);
-	}
-	private static void addEvent(Argument args[], Context context, Boolean isRepeat) throws ExtensionException, LogoException {
-		String primName = isRepeat ? "repeat" : "add";
-		if(isRepeat){
-			if(args.length<5)throw new ExtensionException("dynamic-scheduler:repeat must have 5 arguments: schedule agent tick task");
-		}else{
-			if(args.length<4)throw new ExtensionException("dynamic-scheduler:add must have 4 arguments: schedule agent tick task");
+	private static void addEvent(Argument args[], Context context, AddType addType) throws ExtensionException, LogoException {
+		String primName = null;
+		switch(addType){
+			case DEFAULT:
+				primName = "add";
+				if(args.length<4)throw new ExtensionException("dynamic-scheduler:add must have 4 arguments: schedule agent task tick");
+				break;
+			case SHUFFLE:
+				primName = "add-shuffled";
+				if(args.length<4)throw new ExtensionException("dynamic-scheduler:add-shuffled must have 4 arguments: schedule agent task tick");
+				break;
+			case REPEAT:
+				primName = "repeat";
+				if(args.length<5)throw new ExtensionException("dynamic-scheduler:repeat must have 5 arguments: schedule agent task tick");
+				break;
 		}
+
 		if (!(args[0].get() instanceof LogoSchedule)) throw new ExtensionException("dynamic-scheduler:"+primName+" expecting a schedule as the first argument");
 		LogoSchedule sched = getScheduleFromArgument(args[0]);
 		if (!(args[1].get() instanceof Agent) && !(args[1].get() instanceof AgentSet)) throw new ExtensionException("dynamic-scheduler:"+primName+" expecting an agent or agentset as the second argument");
@@ -295,11 +323,12 @@ extends org.nlogo.api.DefaultClassManager {
 		if (!args[3].get().getClass().equals(Double.class)) throw new ExtensionException("dynamic-scheduler:"+primName+" expecting a number as the fourth argument");
 		if (args[3].getDoubleValue() < ((ExtensionContext)context).workspace().world().ticks()) throw new ExtensionException("Attempted to schedule an event for tick "+args[3].getDoubleValue()+" which is before the present 'moment' of "+((ExtensionContext)context).workspace().world().ticks());
 		Double repeatInterval = null;
-		if(isRepeat){
+		if(addType == AddType.REPEAT){
 			if (!args[4].get().getClass().equals(Double.class)) throw new ExtensionException("dynamic-scheduler:repeat expecting a number as the fifth argument");
 			if (args[4].getDoubleValue() <= 0) throw new ExtensionException("dynamic-scheduler:repeat the repeat interval must be a positive number");
 			repeatInterval = args[4].getDoubleValue();
 		}
+		Boolean shuffleAgentSet = (addType == AddType.SHUFFLE);
 
 		org.nlogo.agent.AgentSet agentSet = null;
 		if (args[1].get() instanceof org.nlogo.agent.Agent){
@@ -309,8 +338,8 @@ extends org.nlogo.api.DefaultClassManager {
 		}else{
 			agentSet = (org.nlogo.agent.AgentSet) args[1].getAgentSet();
 		}
-		if(debug)printToConsole(context,"scheduling agents: "+agentSet+" task: "+args[2].getCommandTask().toString()+" tick: "+args[3].getDoubleValue() );
-		LogoEvent event = (new DynamicSchedulerExtension()).new LogoEvent(agentSet,args[2].getCommandTask(),args[3].getDoubleValue(),repeatInterval);
+		if(debug)printToConsole(context,"scheduling agents: "+agentSet+" task: "+args[2].getCommandTask().toString()+" tick: "+args[3].getDoubleValue()+" shuffled: "+shuffleAgentSet );
+		LogoEvent event = (new DynamicSchedulerExtension()).new LogoEvent(agentSet,args[2].getCommandTask(),args[3].getDoubleValue(),repeatInterval,shuffleAgentSet);
 		sched.schedule.add(event);
 	}
 
@@ -356,7 +385,12 @@ extends org.nlogo.api.DefaultClassManager {
 			// The following step is necessary in case the agent dies during the perform, if we iterate directly over
 			// the agentset iterator, we'll get a concurrent modification exception when the agent dies and netlogo
 			// attempts to remove the agent from the set.
-			Iterator iter = event.agents.iterator();
+			Iterator iter = null;
+			if(event.shuffleAgentSet){
+				iter = event.agents.shufflerator(extcontext.nvmContext().job.random);
+			}else{
+				iter = event.agents.iterator();
+			}
 			theAgents.clear();
 			while(iter.hasNext()){
 				theAgents.add(iter.next());
