@@ -411,7 +411,7 @@ extends org.nlogo.api.DefaultClassManager {
 			// Grab the next event from the schedule
 			event = sched.schedule.isEmpty() ? null : sched.schedule.first();
 		}
-		if(isGoUntil) tickCounter.tick(untilTick-tickCounter.ticks());
+		if(isGoUntil && untilTick > tickCounter.ticks()) tickCounter.tick(untilTick-tickCounter.ticks());
 	}
 
 	private static void printToConsole(Context context, String msg) throws ExtensionException{
