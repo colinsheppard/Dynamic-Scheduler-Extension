@@ -48,7 +48,7 @@ Reports a dynamic schedule, a custom data type included with this extension, whi
 
 **dynamic-scheduler:add** 
 
-*dynamic-scheduler:add schedule agent task number*
+*dynamic-scheduler:add schedule agent task number*  
 *dynamic-scheduler:add schedule agentset task number*
 
 Add an event to a dynamic schedule.  The order events are added is not important, events will be dispatched in order of the time passed as the last argument. An *agent* or an *agentset* can be passed as the second argument along with a *task* as the third, which is executed by the agent(s) at *number*, which is a time greater than or equal to the present moment (*>= ticks*).
@@ -59,7 +59,7 @@ Add an event to a dynamic schedule.  The order events are added is not important
 
 **dynamic-scheduler:add-shuffled** 
 
-*dynamic-scheduler:add-shuffled schedule agent task number*
+*dynamic-scheduler:add-shuffled schedule agent task number*  
 *dynamic-scheduler:add-shuffled schedule agentset task number*
 
 Add an event to a dynamic schedule and shuffle the agentset during execution.  This is identical to *dynamic-scheduler:add* but when the individuals in the agentset execute the action in random order.
@@ -70,7 +70,7 @@ Add an event to a dynamic schedule and shuffle the agentset during execution.  T
 
 **dynamic-scheduler:repeat** 
 
-*dynamic-scheduler:repeat schedule agent task time-number repeat-interval-number*
+*dynamic-scheduler:repeat schedule agent task time-number repeat-interval-number*  
 *dynamic-scheduler:repeat schedule agentset task time-number repeat-interval-number*
 
 Add a repeating event to a dynamic schedule.  This behaves almost identical to *dynamic-scheduler:add* except after the event is dispatched it is immediately rescheduled *repeat-interval-number* ticks into the future using the same *agent*/*agentset* and *task*. 
