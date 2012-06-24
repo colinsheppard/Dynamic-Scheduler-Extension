@@ -24,7 +24,7 @@ to setup
   dynamic-scheduler:add schedule turtles task go-forward 1
  
    ;; Schedule all of the turtles to peform the "go-forward" procudure at tick 1 in random order
-;  dynamic-scheduler:add schedule (turtle-set (sort-by [true] turtles)) task go-forward 1
+;  dynamic-scheduler:add-shuffled schedule turtles task go-forward 1
   
   ;; Schedule individual turtles to go forward at whatever tick we want, it's ok to add events 
   ;; to the schedule out of order, they will be performed in order

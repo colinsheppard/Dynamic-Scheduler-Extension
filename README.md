@@ -30,7 +30,7 @@ dynamic-scheduler has the following behavior:
 
 * If multiple events are scheduled for the exact same time, they are dispatched in the order in which they are added to the schedule.
 
-* When an agentset is scheduled to perform an event, the individual agents execute the procedure in the same order as *ask*, i.e. the default iteration order used by Netlogo.  To shuffle the order, the agentset must be shuffled during the add (e.g. "(turtle-set (sort-by [true] turtles))").
+* When an agentset is scheduled to perform an event, the individual agents execute the procedure in the same order as *ask*, i.e. the default iteration order used by Netlogo.  To shuffle the order, use the *add-shuffled* primitive which will execute the actions in randmo order with low overhead.
 
 * If an agent is scheduled to perform a task in the future but dies before the event is dispatched, the event will be silently skipped.
 
@@ -54,6 +54,17 @@ Reports a dynamic schedule, a custom data type included with this extension, whi
 Add an event to a dynamic schedule.  The order events are added is not important, events will be dispatched in order of the time passed as the last argument. An *agent* or an *agentset* can be passed as the second argument along with a *task* as the third, which is executed by the agent(s) at *number*, which is a time greater than or equal to the present moment (*>= ticks*).
 
     dynamic-scheduler:add schedule turtles task go-forward 1.0
+
+---------------------------------------
+
+**dynamic-scheduler:add-shuffled** 
+
+*dynamic-scheduler:add-shuffled schedule agent task number*
+*dynamic-scheduler:add-shuffled schedule agentset task number*
+
+Add an event to a dynamic schedule and shuffle the agentset during execution.  This is identical to *dynamic-scheduler:add* but when the individuals in the agentset execute the action in random order.
+
+    dynamic-scheduler:add-shuffled schedule turtles task go-forward 1.0
 
 ---------------------------------------
 
