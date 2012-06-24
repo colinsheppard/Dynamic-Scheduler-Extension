@@ -62,7 +62,7 @@ Add an event to a dynamic schedule.  The order events are added is not important
 *dynamic-scheduler:add-shuffled schedule agent task number*  
 *dynamic-scheduler:add-shuffled schedule agentset task number*
 
-Add an event to a dynamic schedule and shuffle the agentset during execution.  This is identical to *dynamic-scheduler:add* but when the individuals in the agentset execute the action in random order.
+Add an event to a dynamic schedule and shuffle the agentset during execution.  This is identical to *dynamic-scheduler:add* but the individuals in the agentset execute the action in random order.
 
     dynamic-scheduler:add-shuffled schedule turtles task go-forward 1.0
 
