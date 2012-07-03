@@ -9,7 +9,7 @@ to setup
   ;;print __dump-extension-prims
   __clear-all-and-reset-ticks
   
-  create-turtles 50000
+  create-turtles 5
   
   ;; Create the 'schedule' which should be stored as a global
   set schedule dynamic-scheduler:create
@@ -21,11 +21,7 @@ to setup
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   
   ;; Schedule all of the turtles to peform the "go-forward" procudure at tick 1
-  dynamic-scheduler:add-shuffled schedule turtles task go-forward 1
- dynamic-scheduler:add-shuffled schedule turtles task go-forward 2
- dynamic-scheduler:add-shuffled schedule turtles task go-forward 3
- dynamic-scheduler:add-shuffled schedule turtles task go-forward 4
- dynamic-scheduler:add-shuffled schedule turtles task go-forward 5
+  dynamic-scheduler:add schedule turtles task go-forward 1
  
    ;; Schedule all of the turtles to peform the "go-forward" procudure at tick 1 in random order
 ;  dynamic-scheduler:add-shuffled schedule turtles task go-forward 1
@@ -44,7 +40,7 @@ end
 
 ;; Note: in this example model, go-forward occurs inside a turtle context, so self refers to the turtle performing the event
 to go-forward
-  ;;print (word self " going forward at " ticks)
+  print (word self " going forward at " ticks)
   fd 2
   if turtles-reschedule-themselves[
     dynamic-scheduler:add schedule self task go-forward ticks + 10
@@ -68,9 +64,7 @@ end
 
 to go-until
   setup
-  reset-timer
   dynamic-scheduler:go-until schedule go-until-tick
-  print timer
 end
 
 to stop-this-train
@@ -162,7 +156,7 @@ SWITCH
 328
 turtles-reschedule-themselves
 turtles-reschedule-themselves
-1
+0
 1
 -1000
 
@@ -192,7 +186,7 @@ go-until-tick
 go-until-tick
 0
 200
-10
+99
 1
 1
 NIL
