@@ -30,7 +30,7 @@ dynamic-scheduler has the following behavior:
 
 * If multiple events are scheduled for the exact same time, they are dispatched in the order in which they are added to the schedule.
 
-* When an agentset is scheduled to perform an event, the individual agents execute the procedure in the same order as *ask*, i.e. the default iteration order used by Netlogo.  To shuffle the order, use the *add-shuffled* primitive which will execute the actions in randmo order with low overhead.
+* When an agentset is scheduled to perform an event, the individual agents execute the procedure in a non-random order, which is different from *ask* which shuffles the agents.  Of note is that this is the only way I'm aware of to accomplish an unsorted *ask* in Netlogo while still allowing for the death and creation of agents during execution.  Based on some simple benchmarking it appears that not shuffling produces a ~15% speedup in execution time.  To shuffle the order, use the *add-shuffled* primitive which will execute the actions in random order with low overhead.
 
 * If an agent is scheduled to perform a task in the future but dies before the event is dispatched, the event will be silently skipped.
 
