@@ -6,6 +6,7 @@ import java.util.TreeSet;
 import org.nlogo.agent.AgentSet.Iterator;
 import org.nlogo.agent.ArrayAgentSet;
 import org.nlogo.agent.TickCounter;
+import org.nlogo.agent.TreeAgentSet;
 import org.nlogo.agent.World;
 import org.nlogo.api.*;
 import org.nlogo.nvm.ExtensionContext;
@@ -382,24 +383,31 @@ extends org.nlogo.api.DefaultClassManager {
 			if(debug)printToConsole(context,"performing event-id: "+event.id+" for agent: "+event.agents+" at tick:"+event.tick);
 			tickCounter.tick(event.tick-tickCounter.ticks());
 
-			// The following step is necessary in case the agent dies during the perform, if we iterate directly over
-			// the agentset iterator, we'll get a concurrent modification exception when the agent dies and netlogo
-			// attempts to remove the agent from the set.
-			Iterator iter = null;
 			if(event.shuffleAgentSet){
-				iter = event.agents.shufflerator(extcontext.nvmContext().job.random);
+				Iterator iter = event.agents.shufflerator(extcontext.nvmContext().job.random);
+				while(iter.hasNext()){
+					org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job,iter.next(),extcontext.nvmContext().ip,extcontext.nvmContext().activation);
+					if(extcontext.nvmContext().stopping)return;
+					event.task.perform(nvmContext, emptyArgs);
+					if(nvmContext.stopping)return;
+				}
 			}else{
-				iter = event.agents.iterator();
-			}
-			theAgents.clear();
-			while(iter.hasNext()){
-				theAgents.add(iter.next());
-			}
-			for(org.nlogo.agent.Agent theAgent : theAgents){
-				org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job,theAgent,extcontext.nvmContext().ip,extcontext.nvmContext().activation);
-				if(extcontext.nvmContext().stopping)return;
-				event.task.perform(nvmContext, emptyArgs);
-				if(nvmContext.stopping)return;
+				org.nlogo.agent.Agent[] source = null;
+				org.nlogo.agent.Agent[] copy = null;
+				if(event.agents instanceof ArrayAgentSet){
+					source = event.agents.toArray();
+					copy = new org.nlogo.agent.Agent[event.agents.count()];
+					System.arraycopy(source, 0, copy, 0, source.length);
+				}else if(event.agents instanceof TreeAgentSet){
+					copy = event.agents.toArray();
+				}
+				for(org.nlogo.agent.Agent theAgent : copy){
+					if(theAgent == null || theAgent.id == -1)continue;
+					org.nlogo.nvm.Context nvmContext = new org.nlogo.nvm.Context(extcontext.nvmContext().job,theAgent,extcontext.nvmContext().ip,extcontext.nvmContext().activation);
+					if(extcontext.nvmContext().stopping)return;
+					event.task.perform(nvmContext, emptyArgs);
+					if(nvmContext.stopping)return;
+				}
 			}
 
 			// Remove the current event as is from the schedule
